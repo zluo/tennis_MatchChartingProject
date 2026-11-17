@@ -33,3 +33,9 @@ Open http://localhost:8000. Edit files in `docs/`, commit, and push to `master` 
 The original Sites sources remain in `solutions-nextio/` and `tennis-dashboard/` locally; `docs/` is the self-contained GitHub Pages distribution. When updating its dataset, run `python3 tennis-dashboard/scripts/prepare_data.py` and `node tennis-dashboard/scripts/check.mjs`, then copy `tennis-dashboard/dist/data.json` to `docs/tennis/data.json`.
 
 Tennis data attribution and CC BY-NC-SA 4.0 license links appear in the dashboard footer. Keep them when changing or sharing the site.
+
+## Athlete history reports
+
+In Baseline, choose an athlete from the **Athlete** dropdown or the player search. The athlete report shows match-by-match serve, return, first-serve, ace, or break-point rates and charted matches per year. Hover over points to see the opponent, tournament, date, and rate. **Show full history** clears surface and year filters for that athlete. Historical records include only charted matches in this dataset.
+
+Validate athlete calculations with `node --test tests/athlete-history.test.mjs`.

@@ -8,3 +8,15 @@ export function summarize(matches,player=''){
 export function select(matches,{tour='',surface='',from=0,to=9999,player=''}){
  return matches.filter(m=>(!tour||m.gender===tour)&&(!surface||m.surface===surface)&&Number(m.date.slice(0,4))>=from&&Number(m.date.slice(0,4))<=to&&(!player||m.players.some(p=>p.toLowerCase()===player.toLowerCase())));
 }
+
+// A player's own statistics, ordered oldest to newest; no results inferred.
+export function athleteHistory(matches, player) {
+ if (!player) return [];
+ return matches.flatMap(match => {
+  const stats = match.stats.find(s => s.player.toLowerCase() === player.toLowerCase());
+  if (!stats) return [];
+  return [{id:match.id,date:match.date,tournament:match.tournament,surface:match.surface,
+   opponent:match.players.find(p=>p.toLowerCase()!==player.toLowerCase()) || '',
+   ...summarize([{stats:[stats]}],player)}];
+ }).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+}
