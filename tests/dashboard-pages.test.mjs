@@ -27,8 +27,8 @@ test('overview runs without athlete-page elements and links selected player',asy
  nodes.get('player').value='Roger Federer';nodes.get('player').listeners.change();
  assert.equal(nodes.get('athleteLink').href,'athlete.html?player=Roger%20Federer');
  assert(nodes.get('surfaceChart').innerHTML.includes('<svg'));
- assert(nodes.get('trendChart').innerHTML.includes('<rect'));
- assert(!nodes.get('trendChart').innerHTML.includes('<polyline'));
+ assert(!nodes.get('trendChart').innerHTML.includes('<rect'));
+ assert(nodes.get('trendChart').innerHTML.includes('<polyline'));
  assert(!nodes.get('trendChart').innerHTML.includes('<circle'));
 });
 test('separate athlete page supports direct links, filters, and full history',async()=>{

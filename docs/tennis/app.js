@@ -14,8 +14,14 @@ function trends(matches,player){
  if(!years.length)return '<p>No data for this selection.</p>';
  const groups=years.map(y=>({y,...summarize(matches.filter(m=>m.date.startsWith(y)),player)}));
  let out=[0,20,40,60,80,100].map(v=>`<path d="M40 ${205-v*1.8}H520" stroke="#e7ebe1"/>`+text(32,209-v*1.8,v+'%','text-anchor="end"')).join('');
- const groupWidth=470/years.length,barWidth=Math.min(18,groupWidth*.35),x=i=>45+(i+.5)*groupWidth,y=v=>205-v*1.8;
- ['firstIn','aces'].forEach((k,j)=>groups.forEach((g,i)=>{if(g[k]!==null)out+=`<rect x="${x(i)+(j-1)*barWidth}" y="${y(g[k])}" width="${barWidth}" height="${Math.max(1,g[k]*1.8)}" fill="${j?'#83b6ab':'#266449'}"><title>${g.y}: ${pct(g[k])} (${g.serve} serve points)</title></rect>`;}));
+ const x=i=>years.length===1?280:45+i*465/(years.length-1),y=v=>205-v*1.8;
+ ['firstIn','aces'].forEach((key,j)=>{
+  const color=j?'#83b6ab':'#266449',label=j?'Aces per serve point':'First serves in';
+  let points=[];
+  const draw=()=>{if(points.length){const line=points.length===1?[[points[0][0]-4,points[0][1]],[points[0][0]+4,points[0][1]]]:points;out+=`<polyline points="${line.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="3" stroke-linejoin="round"><title>${label}</title></polyline>`;}points=[];};
+  groups.forEach((group,i)=>{if(group[key]===null)draw();else points.push([x(i),y(group[key])]);});draw();
+  groups.forEach((group,i)=>{if(group[key]!==null)out+=`<path d="M${x(i)-5} ${y(group[key])}h10" stroke="transparent" stroke-width="14"><title>${group.y} · ${label}: ${pct(group[key])} (${group.serve} serve points)</title></path>`;});
+ });
  years.forEach((v,i)=>{if(i===0||i===years.length-1||i%Math.ceil(years.length/6)===0)out+=text(x(i),228,v,'text-anchor="middle"');});return svg(out,240);
 }
 function render(){
