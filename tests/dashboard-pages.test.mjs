@@ -35,6 +35,14 @@ test('separate athlete page supports direct links, filters, and full history',as
  const nodes=await load('athlete.html','athlete.js','?player=Roger%20Federer');
  assert(!nodes.has('surfaceChart'));assert.equal(nodes.get('tour').value,'m');
  assert(nodes.get('historyChart').innerHTML.includes('<rect'));
+ assert(nodes.get('historyChart').innerHTML.includes('viewBox="0 0 540 240"'));
+ assert(!nodes.get('historyChart').innerHTML.includes('min-width'));
+ const athleteMatches=data.filter(m=>m.players.includes('Roger Federer'));
+ const annualYears=new Set(athleteMatches.map(m=>m.date.slice(0,4)));
+ assert((nodes.get('historyChart').innerHTML.match(/data-year=/g)||[]).length<=annualYears.size);
+ const year=athleteMatches[0].date.slice(0,4);
+ const annual=analytics.summarize(athleteMatches.filter(m=>m.date.startsWith(year)),'Roger Federer');
+ assert(nodes.get('historyChart').innerHTML.includes(annual.serveWon.toFixed(1)+'%'));
  assert(!nodes.get('historyChart').innerHTML.includes('<polyline'));
  assert(!nodes.get('historyChart').innerHTML.includes('<circle'));
  assert(nodes.get('matchRows').innerHTML.includes('Roger Federer'));

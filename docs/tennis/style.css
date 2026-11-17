@@ -7,4 +7,4 @@
 
 .athlete-profile{display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:22px;margin:22px 0;padding:20px;background:#eef2e6;border-radius:6px}.athlete-profile:empty{display:none}.athlete-profile strong{display:block;font:600 23px Manrope,sans-serif;margin:8px 0}.athlete-profile small{display:block;font-size:10px;color:var(--muted);line-height:1.6}@media(max-width:850px){.athlete-profile{grid-template-columns:1fr}}
 
-#historyChart{overflow-x:auto}#historyChart svg{height:240px;max-width:none}#historyChart rect{transition:fill .15s}
+#historyChart{min-width:0}#historyChart svg{width:100%;height:auto;max-width:100%}#historyChart rect{transition:fill .15s}
