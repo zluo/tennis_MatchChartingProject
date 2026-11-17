@@ -3,7 +3,8 @@
 The complete website is in `docs/`:
 
 - `docs/index.html`: Solutions Nextio home page.
-- `docs/tennis/`: Baseline dashboard, including the generated match dataset.
+- `docs/tennis/`: Baseline overview and generated match dataset.
+- `docs/tennis/athlete.html`: dedicated athlete history reports.
 - Trading links to Yahoo Finance.
 
 Both the company page and dashboard run as static files without an application server or Sites sign-in.
@@ -36,7 +37,7 @@ Tennis data attribution and CC BY-NC-SA 4.0 license links appear in the dashboar
 
 ## Athlete history reports
 
-In Baseline, choose an athlete from the **Athlete** dropdown or the player search. The athlete report shows match-by-match serve, return, first-serve, ace, or break-point rates and charted matches per year. Hover over points to see the opponent, tournament, date, and rate. **Show full history** clears surface and year filters for that athlete. Historical records include only charted matches in this dataset.
+In Baseline, open **Athlete reporting** (`tennis/athlete.html`), then choose an athlete from the **Athlete** dropdown or the player search. The athlete report shows match-by-match serve, return, first-serve, ace, or break-point rates and charted matches per year. Hover over points to see the opponent, tournament, date, and rate. **Show full history** clears surface and year filters for that athlete. Historical records include only charted matches in this dataset.
 
 Validate athlete calculations with `node --test tests/athlete-history.test.mjs`.
 
@@ -52,7 +53,7 @@ node --test tests/athlete-history.test.mjs
 
 The script reads men's and women's `matches`, `stats-Overview`, and `stats-Rally` CSVs. It joins on `match_id`, uses overview `Total` rows, and keeps rally categories `1-3`, `4-6`, `7-9`, and `10`. It excludes matches without one overview total for each player, reporting the count. Existing duplicate metadata IDs produce warnings and use the last row. Missing required columns and invalid numeric counts stop generation before output files change. CSV files remain unchanged.
 
-The default destinations are `docs/tennis/data.json` and, if the local dashboard folder exists, `tennis-dashboard/dist/data.json`. Adjacent `index.html` athlete dropdowns are refreshed with names from the generated data.
+The default destinations are `docs/tennis/data.json` and, if the local dashboard folder exists, `tennis-dashboard/dist/data.json`. Adjacent `index.html` and `athlete.html` athlete dropdowns are refreshed with names from the generated data.
 
 Custom source directory or output paths:
 
@@ -61,4 +62,4 @@ python3 scripts/generate_data.py --source-dir /path/to/csvs --output /tmp/data.j
 python3 scripts/generate_data.py --output /tmp/first/data.json --output /tmp/second/data.json
 ```
 
-After validation, commit and push the changed CSVs, `docs/tennis/data.json`, and `docs/tennis/index.html` to publish the updated reporting data.
+After validation, commit and push the changed CSVs, `docs/tennis/data.json`, and `docs/tennis/athlete.html` to publish the updated reporting data.

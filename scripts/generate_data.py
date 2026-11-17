@@ -91,8 +91,9 @@ def write_outputs(matches, outputs):
         temporary = output.with_name(output.name + '.tmp')
         temporary.write_text(payload, encoding='utf-8')
         temporary.replace(output)
-        page = output.parent / 'index.html'
-        if page.exists():
+        for page in (output.parent / 'index.html', output.parent / 'athlete.html'):
+            if not page.exists():
+                continue
             original = page.read_text(encoding='utf-8')
             updated = re.sub(
                 r'(<select id="athlete">).*?(</select>)',

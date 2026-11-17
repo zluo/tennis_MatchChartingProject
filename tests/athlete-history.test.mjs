@@ -37,13 +37,13 @@ test('real athlete history matches source overview rows',()=>{
  }
 });
 test('dropdown contains every athlete before JavaScript loads',()=>{
- const html=readFileSync(new URL('../docs/tennis/index.html',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../docs/tennis/athlete.html',import.meta.url),'utf8');
  const data=JSON.parse(readFileSync(new URL('../docs/tennis/data.json',import.meta.url)));
  const select=html.match(/<select id="athlete">([\s\S]*?)<\/select>/)[1];
  const names=new Set(data.flatMap(m=>m.players));
  assert.equal((select.match(/<option /g)||[]).length,names.size+1);
  assert(select.includes('Roger Federer'));assert(select.includes('Serena Williams'));
- assert(html.includes('src="app.js?v=athlete-history-2"'));
+ assert(html.includes('src="athlete.js?v=separate-athlete-1"'));
  const app=readFileSync(new URL('../docs/tennis/app.js',import.meta.url),'utf8');
  assert(app.includes("analytics.mjs?v=athlete-history-2"));
 });

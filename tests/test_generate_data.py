@@ -41,11 +41,15 @@ class GeneratorTests(unittest.TestCase):
             self.assertEqual(matches[0]['rally'], [['1-3',2]])
             page = root / 'index.html'
             page.write_text('<select id="athlete"><option>Old</option></select>')
+            athlete_page = root / 'athlete.html'
+            athlete_page.write_text('<select id="athlete"><option>Old</option></select>')
             output = root / 'data.json'
             generator.write_outputs(matches, [output])
             self.assertEqual(json.loads(output.read_text()), matches)
             self.assertIn('A &amp; B', page.read_text())
             self.assertNotIn('Old', page.read_text())
+            self.assertIn('A &amp; B', athlete_page.read_text())
+            self.assertNotIn('Old', athlete_page.read_text())
             before = output.read_bytes()
             generator.write_outputs(matches, [output])
             self.assertEqual(before, output.read_bytes())
