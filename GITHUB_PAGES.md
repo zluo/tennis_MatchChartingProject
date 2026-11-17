@@ -31,7 +31,7 @@ python3 -m http.server 8000 --directory docs
 
 Open http://localhost:8000. Edit files in `docs/`, commit, and push to `master` to deploy subsequent changes. Relative asset links support the repository URL prefix.
 
-The original Sites sources remain in `solutions-nextio/` and `tennis-dashboard/` locally; `docs/` is the self-contained GitHub Pages distribution. When updating its dataset, run `python3 scripts/generate_data.py`. This updates `docs/tennis/data.json`, refreshes its athlete dropdown, and updates the local dashboard copy if present. No manual copying is required.
+The original Sites sources are tracked as ordinary folders in `solutions-nextio/` and `tennis-dashboard/`; `docs/` is the self-contained GitHub Pages distribution. When updating its dataset, run `python3 scripts/generate_data.py`. This updates `docs/tennis/data.json`, refreshes its athlete dropdown, and updates the local dashboard copy if present. No manual copying is required.
 
 Tennis data attribution and CC BY-NC-SA 4.0 license links appear in the dashboard footer. Keep them when changing or sharing the site.
 
@@ -87,3 +87,7 @@ The athlete page stacks **Wins**, **Losses**, and **Unknown** outcomes in the ye
 `generate_data.py` now streams all available `charting-{m,w}-points-*.csv` files and stores each match's `winner` (player name or `null`). A result is confirmed only when the final recorded point completes the required number of sets using its pre-point score, server, point winner, best-of metadata, and workbook match-format code. Scores in `Pts` are server-first. Standard, advantage, 8-all/12-all tiebreaks, deciding 10-point tiebreaks, match tiebreaks, and NextGen formats are supported.
 
 Incomplete, retired, malformed, unsupported, and missing-point records stay **Unknown**; the final point winner alone is not treated as the match winner. Point files are optional for custom inputs, but omitting them leaves outcomes unknown. Refresh generated match data with `python3 scripts/generate_data.py` after updating point CSVs. These counts cover charted matches, not the athlete's full professional record.
+
+## GitHub checkout and submodules
+
+`solutions-nextio/` and `tennis-dashboard/` are ordinary tracked folders, not submodules. Do not run `git init` inside them or add their embedded `.git` directories. This allows the Pages checkout step to run with recursive submodule fetching without requiring a `.gitmodules` file. Source changes can be committed directly from the repository root.

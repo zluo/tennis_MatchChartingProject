@@ -1,0 +1,93 @@
+import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=yearly-results-1';
+const $=id=>document.getElementById(id),fmt=n=>Number(n).toLocaleString(),pct=n=>n===null?'—':n.toFixed(1)+'%',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let data=[],filtered=[],directory=[],page=0;
+const svg=(body,height=230)=>`<svg viewBox="0 0 540 ${height}" role="img">${body}</svg>`;
+const text=(x,y,t,extra='')=>`<text x="${x}" y="${y}" ${extra}>${esc(t)}</text>`;
+function populateAthletes(){
+ const tour=$('tour').value,chosen=$('player').value.trim();
+ const profiles=directory.filter(p=>p.gender===tour).sort((a,b)=>(a.rank??Infinity)-(b.rank??Infinity)||a.name.localeCompare(b.name));
+ const option=p=>`<option value="${esc(p.name)}">${p.rank?'#'+p.rank:'Rank unavailable'} · ${esc(p.name)} · ${p.first.slice(0,4)}–${p.last.slice(0,4)}</option>`;
+ $('athlete').innerHTML='<option value="">Choose an athlete…</option>'+profiles.map(option).join('');
+ $('players').innerHTML=profiles.map(p=>`<option value="${esc(p.name)}">`).join('');
+ $('athlete').value=profiles.some(p=>p.name===chosen)?chosen:'';
+ const snapshot=profiles.find(p=>p.rankingDate);
+ $('rankingStatus').textContent=`${tour==='m'?'Men / ATP':'Women / WTA'} · Sorted by singles rank, then name. ${snapshot?'Ranking snapshot: '+snapshot.rankingDate+' (TennisExplorer, top 500).':'Ranking snapshot unavailable.'} Players without a matched rank follow ranked players.`;
+}
+function renderProfile(player){
+ const profile=directory.find(p=>p.gender===$('tour').value&&p.name.toLowerCase()===player.toLowerCase());
+ if(!profile){$('athleteProfile').innerHTML='';return;}
+ $('athleteProfile').innerHTML=`<div><span class="eyebrow">${profile.gender==='m'?'MEN / ATP':'WOMEN / WTA'} SINGLES RANK</span><strong>${profile.rank?'#'+profile.rank:'Unavailable'}</strong><small>${profile.rankingDate?'Snapshot '+esc(profile.rankingDate):'No ranking snapshot'}${profile.rankingSource?' · <a href="'+esc(profile.rankingSource)+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':''}</small></div><div><span class="eyebrow">CHARTED CAREER PERIOD</span><strong>${profile.first.slice(0,4)}–${profile.last.slice(0,4)}</strong><small>First to last charted match · not professional debut or retirement dates</small></div><div><span class="eyebrow">CAREER IN THIS DATASET</span><strong>${fmt(profile.matches)} matches</strong><small>All charted matches, before report filters</small></div>`;
+}
+function renderAthlete(player){
+ renderProfile(player);
+ const history=athleteHistory(filtered,player);
+ $('athlete').value=history.length?history[0].stats[0].player:player;
+ $('athleteTitle').textContent=player?player+' · athlete history':'Choose an athlete to explore their history';
+ $('fullHistory').disabled=!player;
+ if(!history.length){
+  const message=player?'No charted matches for this athlete under the current filters. Use “Show full history” to widen the selection.':'Choose an athlete to see their history.';
+  $('athleteSummary').textContent=message;
+  $('historyChart').innerHTML='<p>'+esc(message)+'</p>';$('activityChart').innerHTML='<p>'+esc(message)+'</p>';return;
+ }
+ const date=d=>d.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
+ const wins=history.filter(h=>h.result==='win').length,losses=history.filter(h=>h.result==='loss').length,unknown=history.length-wins-losses;
+ $('athleteSummary').textContent=`${fmt(history.length)} charted matches · ${wins} wins / ${losses} losses / ${unknown} unknown · ${date(history[0].date)} to ${date(history.at(-1).date)} · ${new Set(history.map(h=>h.opponent)).size} opponents · current filters`;
+
+ const metric=$('historyMetric').value,label=$('historyMetric').selectedOptions[0].textContent;
+ const step=460/history.length,matchBarWidth=Math.min(22,step*.85),x=i=>50+(i+.5)*step,y=v=>200-v*1.7;
+ let plot='<title>'+esc(player+' — '+label+' by match, oldest to newest')+'</title>';
+ for(const v of [0,25,50,75,100])plot+=`<path d="M50 ${y(v)}H510" stroke="#e7ebe1"/>`+text(42,y(v)+4,v+'%','text-anchor="end"');
+ history.forEach((match,i)=>{if(match[metric]!==null)plot+=`<rect data-match="${esc(match.id)}" x="${x(i)-matchBarWidth/2}" y="${y(match[metric])}" width="${matchBarWidth}" height="${Math.max(1,match[metric]*1.7)}" fill="#266449"><title>${esc(date(match.date)+' · vs '+match.opponent+' · '+match.tournament+' · '+match.surface+' · '+label+': '+pct(match[metric]))}</title></rect>`;});
+ for(const i of new Set([0,Math.floor((history.length-1)/2),history.length-1]))plot+=text(x(i),225,date(history[i].date),'text-anchor="middle"');
+ $('historyChart').innerHTML=svg(plot,240);
+ const counts=new Map();history.forEach(h=>{const year=h.date.slice(0,4);if(!counts.has(year))counts.set(year,{win:0,loss:0,unknown:0,total:0});const record=counts.get(year);record[h.result]++;record.total++;});
+ const first=+history[0].date.slice(0,4),last=+history.at(-1).date.slice(0,4),years=Array.from({length:last-first+1},(_,i)=>String(first+i));
+ const max=Math.max(...[...counts.values()].map(r=>r.total)),barWidth=460/years.length;
+ let activity='<title>'+esc(player+' — charted wins, losses, and unknown outcomes by year')+'</title>';
+ for(const v of [...new Set([0,Math.ceil(max/2),max])]){const yy=200-v/max*170;activity+=`<path d="M40 ${yy}H510" stroke="#e7ebe1"/>`+text(32,yy+4,v,'text-anchor="end"');}
+ const colors={win:'#266449',loss:'#b36c52',unknown:'#a6afa5'};
+ years.forEach((year,i)=>{const record=counts.get(year)||{win:0,loss:0,unknown:0,total:0};let base=200;
+ for(const result of ['win','loss','unknown']){const n=record[result],height=n/max*170;base-=height;if(n)activity+=`<rect data-result="${result}" x="${45+i*barWidth}" y="${base}" width="${Math.max(1,barWidth-3)}" height="${height}" rx="1" fill="${colors[result]}"><title>${year}: ${record.win} wins, ${record.loss} losses, ${record.unknown} unknown (${record.total} charted matches)</title></rect>`;}
+ if(i===0||i===years.length-1||i%Math.ceil(years.length/5)===0)activity+=text(45+(i+.5)*barWidth,225,year,'text-anchor="middle"');});
+ $('activityChart').innerHTML=svg(activity,240);
+
+}
+function render(){
+ const player=$('player').value.trim(),from=+$('from').value,to=+$('to').value;
+ filtered=player?select(data,{tour:$('tour').value,surface:$('surface').value,from,to,player}).sort((a,b)=>b.date.localeCompare(a.date)):[];page=0;
+ const s=summarize(filtered,player);
+ $('status').textContent=from>to?'Choose a start year before the end year.':player?`${fmt(filtered.length)} charted matches · ${player} · ${from}–${to}`:'Choose an athlete to begin.';
+ const metric=(title,value)=>`<article class="metric"><div class="eyebrow">${title}</div><div class="value">${value}</div></article>`;
+ $('metrics').innerHTML=metric('CHARTED MATCHES',fmt(filtered.length))+metric('SERVE POINTS WON',pct(s.serveWon))+metric('RETURN POINTS WON',pct(s.returnWon))+metric('BREAK POINTS SAVED',pct(s.breakSaved));
+ $('export').disabled=!filtered.length;renderAthlete(player);renderTable();
+}
+function renderTable(){
+ const pages=Math.max(1,Math.ceil(filtered.length/12));$('page').textContent=`${page+1} / ${pages}`;$('prev').disabled=page===0;$('next').disabled=page>=pages-1;$('matchCount').textContent=fmt(filtered.length)+' matches';
+ $('matchRows').innerHTML=filtered.slice(page*12,page*12+12).map((m,i)=>`<tr><td>${esc(m.date.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'))}</td><td><strong>${esc(m.players.join(' vs '))}</strong></td><td>${esc(m.tournament)}</td><td><span class="pill">${esc(m.surface)}</span></td><td>${esc(m.round)}</td><td><button data-index="${page*12+i}">Analyze ↗</button></td></tr>`).join('')||'<tr><td colspan="6">No matching records.</td></tr>';
+}
+$('matchRows').addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;const m=filtered[+button.dataset.index];const fields=[['Serve points','serve_pts'],['Aces','aces'],['Double faults','dfs'],['Winners','winners'],['Unforced errors','unforced']];$('detailContent').innerHTML=`<span class="eyebrow">MATCH ANALYSIS</span><h2>${esc(m.players.join(' vs '))}</h2><p>${esc(m.tournament)} · ${esc(m.surface)} · ${esc(m.date)}</p><div class="tablewrap"><table><thead><tr><th>Metric</th>${m.stats.map(s=>`<th>${esc(s.player)}</th>`).join('')}</tr></thead><tbody>${fields.map(([label,key])=>`<tr><td>${label}</td>${m.stats.map(s=>`<td>${fmt(s[key])}</td>`).join('')}</tr>`).join('')}<tr><td>Serve points won</td>${m.stats.map(s=>`<td>${pct(summarize([{stats:[s]}]).serveWon)}</td>`).join('')}</tr></tbody></table></div><p>Winners and unforced errors follow the source overview definitions.</p>`;$('detail').showModal();});
+$('close').onclick=()=>$('detail').close();$('prev').onclick=()=>{page--;renderTable();};$('next').onclick=()=>{page++;renderTable();};
+$('export').onclick=()=>{const fields=['id','date','gender','tournament','surface','round'];const cell=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=[fields.join(','),...filtered.map(m=>fields.map(f=>cell(m[f])).join(','))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='baseline-matches.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+try{const response=await fetch('data.json', {cache:'no-cache'});if(!response.ok)throw Error('Dataset request failed');data=await response.json();
+ const years=[...new Set(data.map(m=>m.date.slice(0,4)))].filter(y=>/^\d{4}$/.test(y)).sort();
+ for(const id of ['from','to'])$(id).innerHTML=years.map(y=>`<option>${y}</option>`).join('');$('to').value=years.at(-1);
+ $('surface').innerHTML+=[...new Set(data.map(m=>m.surface))].filter(Boolean).sort().map(s=>`<option>${esc(s)}</option>`).join('');
+ const athletes=[...new Set(data.flatMap(m=>m.players))].sort();
+ try{const response=await fetch('profiles.json',{cache:'no-cache'});if(!response.ok)throw Error('Profiles unavailable');directory=await response.json();}catch{
+  directory=athletes.flatMap(name=>['w','m'].flatMap(gender=>{const matches=data.filter(m=>m.gender===gender&&m.players.includes(name));if(!matches.length)return [];const dates=matches.map(m=>m.date).sort();return [{name,gender,first:dates[0],last:dates.at(-1),matches:matches.length,rank:null,rankingDate:null,rankingSource:null}];}));
+ }
+ populateAthletes();
+ $('athlete').onchange=()=>{$('player').value=$('athlete').value;syncTourToAthlete();populateAthletes();render();};
+ $('historyMetric').onchange=()=>renderAthlete($('player').value.trim());
+ $('fullHistory').onclick=()=>{$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);syncTourToAthlete();populateAthletes();render();};
+ function syncTourToAthlete(){const player=$('player').value.trim().toLowerCase();if(!player)return;const tours=[...new Set(data.filter(m=>m.players.some(p=>p.toLowerCase()===player)).map(m=>m.gender))];if(tours.length)$('tour').value=tours.length===1?tours[0]:'';}
+
+ for(const id of ['tour','surface','from','to','player'])$(id).addEventListener('change',()=>{if(id==='player')syncTourToAthlete();if(id==='tour'&&!directory.some(p=>p.name===$('player').value&&p.gender===$('tour').value))$('player').value='';populateAthletes();render();});
+ $('reset').onclick=()=>{$('tour').value='w';$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);$('player').value='';populateAthletes();render();};
+ const requested=new URLSearchParams(location.search).get('player');
+ if(requested&&athletes.includes(requested)){$('player').value=requested;syncTourToAthlete();populateAthletes();}
+ render();
+}catch(error){
+ const message='Could not load match data. Open the GitHub Pages website or serve this folder over HTTP, then reload. '+error.message;
+ $('status').textContent=message;$('athleteSummary').textContent=message;
+}
