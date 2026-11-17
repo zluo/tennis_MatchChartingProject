@@ -54,6 +54,19 @@ class GeneratorTests(unittest.TestCase):
             generator.write_outputs(matches, [output])
             self.assertEqual(before, output.read_bytes())
 
+    def test_profiles_match_normalized_names_and_sort_rank(self):
+        matches = [dict(gender='m', date='20250101', players=['Felix Auger Aliassime', 'Roger Federer']),
+                   dict(gender='m', date='20260101', players=['Felix Auger Aliassime', 'Roger Federer'])]
+        rows = [dict(gender='m', name='Auger-Aliassime Felix', rank='17', ranking_date='2026-11-16', source='https://example.com')]
+        profiles = generator.build_profiles(matches, rows)
+        self.assertEqual(profiles[0]['name'], 'Felix Auger Aliassime')
+        self.assertEqual(profiles[0]['rank'], 17)
+        self.assertEqual(profiles[0]['first'], '20250101')
+        self.assertEqual(profiles[0]['last'], '20260101')
+        self.assertEqual(profiles[0]['matches'], 2)
+        self.assertIsNone(profiles[1]['rank'])
+        self.assertEqual(profiles[1]['rankingDate'], '2026-11-16')
+
     def test_bad_numeric_count_preserves_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

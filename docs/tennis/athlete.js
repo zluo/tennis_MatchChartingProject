@@ -1,9 +1,25 @@
 import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=athlete-history-2';
 const $=id=>document.getElementById(id),fmt=n=>Number(n).toLocaleString(),pct=n=>n===null?'—':n.toFixed(1)+'%',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let data=[],filtered=[],page=0;
+let data=[],filtered=[],directory=[],page=0;
 const svg=(body,height=230)=>`<svg viewBox="0 0 540 ${height}" role="img">${body}</svg>`;
 const text=(x,y,t,extra='')=>`<text x="${x}" y="${y}" ${extra}>${esc(t)}</text>`;
+function populateAthletes(){
+ const tour=$('tour').value,chosen=$('player').value.trim();
+ const profiles=directory.filter(p=>p.gender===tour).sort((a,b)=>(a.rank??Infinity)-(b.rank??Infinity)||a.name.localeCompare(b.name));
+ const option=p=>`<option value="${esc(p.name)}">${p.rank?'#'+p.rank:'Rank unavailable'} · ${esc(p.name)} · ${p.first.slice(0,4)}–${p.last.slice(0,4)}</option>`;
+ $('athlete').innerHTML='<option value="">Choose an athlete…</option>'+profiles.map(option).join('');
+ $('players').innerHTML=profiles.map(p=>`<option value="${esc(p.name)}">`).join('');
+ $('athlete').value=profiles.some(p=>p.name===chosen)?chosen:'';
+ const snapshot=profiles.find(p=>p.rankingDate);
+ $('rankingStatus').textContent=`${tour==='m'?'Men / ATP':'Women / WTA'} · Sorted by singles rank, then name. ${snapshot?'Ranking snapshot: '+snapshot.rankingDate+' (TennisExplorer, top 500).':'Ranking snapshot unavailable.'} Players without a matched rank follow ranked players.`;
+}
+function renderProfile(player){
+ const profile=directory.find(p=>p.gender===$('tour').value&&p.name.toLowerCase()===player.toLowerCase());
+ if(!profile){$('athleteProfile').innerHTML='';return;}
+ $('athleteProfile').innerHTML=`<div><span class="eyebrow">${profile.gender==='m'?'MEN / ATP':'WOMEN / WTA'} SINGLES RANK</span><strong>${profile.rank?'#'+profile.rank:'Unavailable'}</strong><small>${profile.rankingDate?'Snapshot '+esc(profile.rankingDate):'No ranking snapshot'}${profile.rankingSource?' · <a href="'+esc(profile.rankingSource)+'" target="_blank" rel="noopener noreferrer">Source ↗</a>':''}</small></div><div><span class="eyebrow">CHARTED CAREER PERIOD</span><strong>${profile.first.slice(0,4)}–${profile.last.slice(0,4)}</strong><small>First to last charted match · not professional debut or retirement dates</small></div><div><span class="eyebrow">CAREER IN THIS DATASET</span><strong>${fmt(profile.matches)} matches</strong><small>All charted matches, before report filters</small></div>`;
+}
 function renderAthlete(player){
+ renderProfile(player);
  const history=athleteHistory(filtered,player);
  $('athlete').value=history.length?history[0].stats[0].player:player;
  $('athleteTitle').textContent=player?player+' · athlete history':'Choose an athlete to explore their history';
@@ -57,17 +73,19 @@ try{const response=await fetch('data.json', {cache:'no-cache'});if(!response.ok)
  for(const id of ['from','to'])$(id).innerHTML=years.map(y=>`<option>${y}</option>`).join('');$('to').value=years.at(-1);
  $('surface').innerHTML+=[...new Set(data.map(m=>m.surface))].filter(Boolean).sort().map(s=>`<option>${esc(s)}</option>`).join('');
  const athletes=[...new Set(data.flatMap(m=>m.players))].sort();
- $('players').innerHTML=athletes.map(p=>`<option value="${esc(p)}">`).join('');
- $('athlete').innerHTML='<option value="">Choose an athlete…</option>'+athletes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
- $('athlete').onchange=()=>{$('player').value=$('athlete').value;syncTourToAthlete();render();};
+ try{const response=await fetch('profiles.json',{cache:'no-cache'});if(!response.ok)throw Error('Profiles unavailable');directory=await response.json();}catch{
+  directory=athletes.flatMap(name=>['w','m'].flatMap(gender=>{const matches=data.filter(m=>m.gender===gender&&m.players.includes(name));if(!matches.length)return [];const dates=matches.map(m=>m.date).sort();return [{name,gender,first:dates[0],last:dates.at(-1),matches:matches.length,rank:null,rankingDate:null,rankingSource:null}];}));
+ }
+ populateAthletes();
+ $('athlete').onchange=()=>{$('player').value=$('athlete').value;syncTourToAthlete();populateAthletes();render();};
  $('historyMetric').onchange=()=>renderAthlete($('player').value.trim());
- $('fullHistory').onclick=()=>{$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);syncTourToAthlete();render();};
+ $('fullHistory').onclick=()=>{$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);syncTourToAthlete();populateAthletes();render();};
  function syncTourToAthlete(){const player=$('player').value.trim().toLowerCase();if(!player)return;const tours=[...new Set(data.filter(m=>m.players.some(p=>p.toLowerCase()===player)).map(m=>m.gender))];if(tours.length)$('tour').value=tours.length===1?tours[0]:'';}
 
- for(const id of ['tour','surface','from','to','player'])$(id).addEventListener('change',()=>{if(id==='player')syncTourToAthlete();render();});
- $('reset').onclick=()=>{$('tour').value='w';$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);$('player').value='';render();};
+ for(const id of ['tour','surface','from','to','player'])$(id).addEventListener('change',()=>{if(id==='player')syncTourToAthlete();if(id==='tour'&&!directory.some(p=>p.name===$('player').value&&p.gender===$('tour').value))$('player').value='';populateAthletes();render();});
+ $('reset').onclick=()=>{$('tour').value='w';$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);$('player').value='';populateAthletes();render();};
  const requested=new URLSearchParams(location.search).get('player');
- if(requested&&athletes.includes(requested)){$('player').value=requested;syncTourToAthlete();}
+ if(requested&&athletes.includes(requested)){$('player').value=requested;syncTourToAthlete();populateAthletes();}
  render();
 }catch(error){
  const message='Could not load match data. Open the GitHub Pages website or serve this folder over HTTP, then reload. '+error.message;

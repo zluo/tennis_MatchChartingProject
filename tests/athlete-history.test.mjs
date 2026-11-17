@@ -43,7 +43,7 @@ test('dropdown contains every athlete before JavaScript loads',()=>{
  const names=new Set(data.flatMap(m=>m.players));
  assert.equal((select.match(/<option /g)||[]).length,names.size+1);
  assert(select.includes('Roger Federer'));assert(select.includes('Serena Williams'));
- assert(html.includes('src="athlete.js?v=separate-athlete-1"'));
+ assert(html.includes('src="athlete.js?v=ranked-athletes-1"'));
  const app=readFileSync(new URL('../docs/tennis/app.js',import.meta.url),'utf8');
  assert(app.includes("analytics.mjs?v=athlete-history-2"));
 });

@@ -10,6 +10,7 @@ import html
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,18 +80,67 @@ def build_dataset(source):
     return result, skipped
 
 
-def write_outputs(matches, outputs):
+def name_key(name):
+    plain = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode().lower()
+    return ' '.join(sorted(re.findall(r'[a-z0-9]+', plain)))
+
+
+def build_profiles(matches, ranking_rows=()):
+    rankings = {}
+    dates = {}
+    for row in ranking_rows:
+        rank = int(row['rank'])
+        if row['gender'] not in ('m', 'w') or rank < 1:
+            raise ValueError('Invalid gender or rank in athlete_rankings.csv')
+        key = (row['gender'], name_key(row['name']))
+        if key in rankings:
+            raise ValueError(f'Ambiguous ranking name: {row["name"]}')
+        rankings[key] = row
+        dates[row['gender']] = max(dates.get(row['gender'], ''), row['ranking_date'])
+    profiles = {}
+    for match in matches:
+        for name in match['players']:
+            key = (match['gender'], name)
+            if key not in profiles:
+                ranking = rankings.get((match['gender'], name_key(name)))
+                profiles[key] = dict(name=name, gender=match['gender'], first=match['date'], last=match['date'],
+                    matches=0, rank=int(ranking['rank']) if ranking else None,
+                    rankingDate=ranking['ranking_date'] if ranking else dates.get(match['gender']),
+                    rankingSource=ranking['source'] if ranking else None)
+            profile = profiles[key]
+            profile['first'] = min(profile['first'], match['date'])
+            profile['last'] = max(profile['last'], match['date'])
+            profile['matches'] += 1
+    return sorted(profiles.values(), key=lambda p:(p['gender'], p['rank'] or float('inf'), p['name']))
+
+
+def athlete_options(profiles):
+    options = '<option value="">Choose an athlete…</option>'
+    for gender, label in [('w', 'Women'), ('m', 'Men')]:
+        options += f'<optgroup label="{label}">'
+        for profile in profiles:
+            if profile['gender'] != gender:
+                continue
+            rank = f'#{profile["rank"]}' if profile['rank'] else 'Rank unavailable'
+            period = profile['first'][:4] + '–' + profile['last'][:4]
+            name = html.escape(profile['name'], quote=True)
+            options += f'<option value="{name}">{rank} · {name} · {period}</option>'
+        options += '</optgroup>'
+    return options
+
+
+def write_outputs(matches, outputs, ranking_rows=()):
     # Finish parsing and serializing before writing any files.
     payload = json.dumps(matches, separators=(',', ':'), ensure_ascii=True)
-    names = sorted({name for match in matches for name in match['players']})
-    options = '<option value="">Choose an athlete…</option>' + ''.join(
-        f'<option value="{html.escape(name, quote=True)}">{html.escape(name)}</option>'
-        for name in names)
+    names = {name for match in matches for name in match['players']}
+    profiles = build_profiles(matches, ranking_rows)
+    options = athlete_options(profiles)
     for output in outputs:
         output.parent.mkdir(parents=True, exist_ok=True)
         temporary = output.with_name(output.name + '.tmp')
         temporary.write_text(payload, encoding='utf-8')
         temporary.replace(output)
+        (output.parent / 'profiles.json').write_text(json.dumps(profiles, ensure_ascii=True, separators=(',', ':')), encoding='utf-8')
         for page in (output.parent / 'index.html', output.parent / 'athlete.html'):
             if not page.exists():
                 continue
@@ -118,7 +168,9 @@ def main(argv=None):
         matches, skipped = build_dataset(args.source_dir.resolve())
         if not matches:
             raise ValueError('No matches with two valid player overview totals; outputs were not changed')
-        write_outputs(matches, list(dict.fromkeys(path.resolve() for path in outputs)))
+        ranking_path = args.source_dir / 'data/athlete_rankings.csv'
+        ranking_rows = list(read_rows(ranking_path, ['gender','name','rank','ranking_date','source'])) if ranking_path.exists() else []
+        write_outputs(matches, list(dict.fromkeys(path.resolve() for path in outputs)), ranking_rows)
     except (OSError, ValueError, csv.Error) as error:
         parser.exit(1, f'Error: {error}\n')
     print(f'Skipped {skipped:,} matches without exactly one overview Total row per player.')

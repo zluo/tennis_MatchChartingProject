@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as analytics from '../docs/tennis/analytics.mjs';
 const data=JSON.parse(readFileSync(new URL('../docs/tennis/data.json',import.meta.url)));
+const profiles=JSON.parse(readFileSync(new URL('../docs/tennis/profiles.json',import.meta.url)));
 class Element {
  constructor(){this.value='';this.html='';this.listeners={};}
  set innerHTML(html){this.html=html;if(!this.value){const first=html.match(/<option(?: value="([^"]*)")?>([^<]*)<\/option>/);if(first)this.value=first[1]??first[2];}}
@@ -17,7 +18,7 @@ async function load(page,script,search=''){
  const document={getElementById:id=>nodes.get(id)||null};
  const source=readFileSync(new URL('../docs/tennis/'+script,import.meta.url),'utf8').replace(/^import .*\n/,'');
  const run=new (Object.getPrototypeOf(async function(){}).constructor)('document','fetch','sum','rate','summarize','select','athleteHistory','location',source);
- await run(document,async()=>({ok:true,json:async()=>data}),analytics.sum,analytics.rate,analytics.summarize,analytics.select,analytics.athleteHistory,{search});
+ await run(document,async url=>({ok:true,json:async()=>url==='profiles.json'?profiles:data}),analytics.sum,analytics.rate,analytics.summarize,analytics.select,analytics.athleteHistory,{search});
  assert(!nodes.get('status').textContent.startsWith('Could not load'));
  return nodes;
 }
@@ -37,4 +38,24 @@ test('separate athlete page supports direct links, filters, and full history',as
  nodes.get('fullHistory').onclick();assert(nodes.get('historyChart').innerHTML.includes('<circle'));
  nodes.get('reset').onclick();assert.equal(nodes.get('athlete').value,'');
  assert.equal(nodes.get('status').textContent,'Choose an athlete to begin.');
+});
+
+test('tour lists are separate, rank-sorted, and show lifetime charted period',async()=>{
+ const nodes=await load('athlete.html','athlete.js');
+ let choices=nodes.get('athlete').innerHTML;
+ assert(choices.includes('Serena Williams'));assert(!choices.includes('Roger Federer'));
+ const rankedWomen=profiles.filter(p=>p.gender==='w'&&p.rank!==null).sort((a,b)=>a.rank-b.rank);
+ assert(choices.indexOf(rankedWomen[0].name)<choices.indexOf('Rank unavailable'));
+ const womenOptions=[...choices.matchAll(/<option value="([^"]+)">/g)].map(m=>m[1]);
+ assert.deepEqual(womenOptions.slice(0,rankedWomen.length),rankedWomen.map(p=>p.name));
+ nodes.get('tour').value='m';nodes.get('tour').listeners.change();
+ choices=nodes.get('athlete').innerHTML;assert(choices.includes('Roger Federer'));assert(!choices.includes('Serena Williams'));
+ const men=profiles.filter(p=>p.gender==='m'&&p.rank!==null).sort((a,b)=>a.rank-b.rank);
+ const options=[...choices.matchAll(/<option value="([^"]+)">/g)].map(m=>m[1]);
+ assert.equal(options[0],men[0].name);
+ nodes.get('athlete').value='Roger Federer';nodes.get('athlete').onchange();
+ const profile=profiles.find(p=>p.name==='Roger Federer');
+ assert(nodes.get('athleteProfile').innerHTML.includes(profile.first.slice(0,4)+'–'+profile.last.slice(0,4)));
+ nodes.get('tour').value='w';nodes.get('tour').listeners.change();
+ assert.equal(nodes.get('player').value,'');assert.equal(nodes.get('athleteProfile').innerHTML,'');
 });

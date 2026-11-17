@@ -63,3 +63,19 @@ python3 scripts/generate_data.py --output /tmp/first/data.json --output /tmp/sec
 ```
 
 After validation, commit and push the changed CSVs, `docs/tennis/data.json`, and `docs/tennis/athlete.html` to publish the updated reporting data.
+
+## Athlete tours, rankings, and career coverage
+
+On **Athlete reporting**, choose **Women** or **Men** in **Athlete tour**. The dropdown shows only that tour, sorted by singles ranking (lowest number first), with missing ranks after ranked athletes. Names with no available rank remain selectable. Each option shows its charted period; the profile shows its dated rank, source link, total charted matches, and first/last charted years before report filters.
+
+**Charted career period is dataset coverage**, not verified professional debut or retirement. The match CSVs do not contain official career dates. A missing rank means no match in the saved top-500 snapshot, not proof that an athlete is unranked or retired. Name matching ignores accents, punctuation, and name-token order, but does not guess nicknames or changed surnames.
+
+`data/athlete_rankings.csv` stores the dated top-500 ATP and WTA singles snapshots from [TennisExplorer](https://www.tennisexplorer.com/ranking/). To refresh rankings with network access and regenerate reports:
+
+```sh
+python3 scripts/update_rankings.py
+```
+
+The downloader validates dates and page coverage before replacing the saved ranking CSV. `python3 scripts/generate_data.py` remains usable offline and joins the saved snapshot to produce `profiles.json` beside each `data.json`. If no ranking CSV exists, profiles still include tour and charted period, with unavailable ranks. The website also falls back to charted periods if `profiles.json` cannot load.
+
+After a ranking refresh, commit `data/athlete_rankings.csv`, `docs/tennis/profiles.json`, and `docs/tennis/athlete.html`, along with any changed match data. Rankings are snapshots and do not refresh automatically for visitors.
