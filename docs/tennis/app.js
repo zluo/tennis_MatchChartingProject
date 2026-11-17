@@ -1,4 +1,4 @@
-import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs';
+import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=athlete-history-2';
 const $=id=>document.getElementById(id),fmt=n=>Number(n).toLocaleString(),pct=n=>n===null?'—':n.toFixed(1)+'%',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let data=[],filtered=[],page=0;
 const svg=(body,height=230)=>`<svg viewBox="0 0 540 ${height}" role="img">${body}</svg>`;
@@ -74,13 +74,13 @@ function renderTable(){
 $('matchRows').addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;const m=filtered[+button.dataset.index];const fields=[['Serve points','serve_pts'],['Aces','aces'],['Double faults','dfs'],['Winners','winners'],['Unforced errors','unforced']];$('detailContent').innerHTML=`<span class="eyebrow">MATCH ANALYSIS</span><h2>${esc(m.players.join(' vs '))}</h2><p>${esc(m.tournament)} · ${esc(m.surface)} · ${esc(m.date)}</p><div class="tablewrap"><table><thead><tr><th>Metric</th>${m.stats.map(s=>`<th>${esc(s.player)}</th>`).join('')}</tr></thead><tbody>${fields.map(([label,key])=>`<tr><td>${label}</td>${m.stats.map(s=>`<td>${fmt(s[key])}</td>`).join('')}</tr>`).join('')}<tr><td>Serve points won</td>${m.stats.map(s=>`<td>${pct(summarize([{stats:[s]}]).serveWon)}</td>`).join('')}</tr></tbody></table></div><p>Winners and unforced errors follow the source overview definitions.</p>`;$('detail').showModal();});
 $('close').onclick=()=>$('detail').close();$('prev').onclick=()=>{page--;renderTable();};$('next').onclick=()=>{page++;renderTable();};
 $('export').onclick=()=>{const fields=['id','date','gender','tournament','surface','round'];const cell=v=>'"'+String(v).replaceAll('"','""')+'"';const csv=[fields.join(','),...filtered.map(m=>fields.map(f=>cell(m[f])).join(','))].join('\r\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='baseline-matches.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
-try{const response=await fetch('data.json');if(!response.ok)throw Error('Dataset request failed');data=await response.json();
+try{const response=await fetch('data.json', {cache:'no-cache'});if(!response.ok)throw Error('Dataset request failed');data=await response.json();
  const years=[...new Set(data.map(m=>m.date.slice(0,4)))].filter(y=>/^\d{4}$/.test(y)).sort();
  for(const id of ['from','to'])$(id).innerHTML=years.map(y=>`<option>${y}</option>`).join('');$('to').value=years.at(-1);
  $('surface').innerHTML+=[...new Set(data.map(m=>m.surface))].filter(Boolean).sort().map(s=>`<option>${esc(s)}</option>`).join('');
  const athletes=[...new Set(data.flatMap(m=>m.players))].sort();
  $('players').innerHTML=athletes.map(p=>`<option value="${esc(p)}">`).join('');
- $('athlete').innerHTML+=athletes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+ $('athlete').innerHTML='<option value="">Choose an athlete…</option>'+athletes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
  $('athlete').onchange=()=>{$('player').value=$('athlete').value;syncTourToAthlete();render();};
  $('historyMetric').onchange=()=>renderAthlete($('player').value.trim());
  $('fullHistory').onclick=()=>{$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);syncTourToAthlete();render();};
@@ -88,4 +88,7 @@ try{const response=await fetch('data.json');if(!response.ok)throw Error('Dataset
 
  for(const id of ['tour','surface','from','to','player'])$(id).addEventListener('change',()=>{if(id==='player')syncTourToAthlete();render();});
  $('reset').onclick=()=>{$('tour').value='w';$('surface').value='';$('from').value=years[0];$('to').value=years.at(-1);$('player').value='';render();};render();
-}catch(error){$('status').textContent='Could not load match data. Serve this folder over HTTP and reload. '+error.message;}
+}catch(error){
+ const message='Could not load match data. Open the GitHub Pages website or serve this folder over HTTP, then reload. '+error.message;
+ $('status').textContent=message;$('athleteSummary').textContent=message;
+}
