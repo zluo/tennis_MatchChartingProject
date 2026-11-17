@@ -14,8 +14,8 @@ function trends(matches,player){
  if(!years.length)return '<p>No data for this selection.</p>';
  const groups=years.map(y=>({y,...summarize(matches.filter(m=>m.date.startsWith(y)),player)}));
  let out=[0,20,40,60,80,100].map(v=>`<path d="M40 ${205-v*1.8}H520" stroke="#e7ebe1"/>`+text(32,209-v*1.8,v+'%','text-anchor="end"')).join('');
- const x=i=>years.length===1?280:45+i*465/(years.length-1),y=v=>205-v*1.8;
- ['firstIn','aces'].forEach((k,j)=>{const points=groups.map((g,i)=>g[k]===null?null:[x(i),y(g[k])]).filter(Boolean);out+=`<polyline points="${points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${j?'#83b6ab':'#266449'}" stroke-width="3"/>`;groups.forEach((g,i)=>{if(g[k]!==null)out+=`<circle cx="${x(i)}" cy="${y(g[k])}" r="3" fill="${j?'#83b6ab':'#266449'}"><title>${g.y}: ${pct(g[k])} (${g.serve} serve points)</title></circle>`;});});
+ const groupWidth=470/years.length,barWidth=Math.min(18,groupWidth*.35),x=i=>45+(i+.5)*groupWidth,y=v=>205-v*1.8;
+ ['firstIn','aces'].forEach((k,j)=>groups.forEach((g,i)=>{if(g[k]!==null)out+=`<rect x="${x(i)+(j-1)*barWidth}" y="${y(g[k])}" width="${barWidth}" height="${Math.max(1,g[k]*1.8)}" fill="${j?'#83b6ab':'#266449'}"><title>${g.y}: ${pct(g[k])} (${g.serve} serve points)</title></rect>`;}));
  years.forEach((v,i)=>{if(i===0||i===years.length-1||i%Math.ceil(years.length/6)===0)out+=text(x(i),228,v,'text-anchor="middle"');});return svg(out,240);
 }
 function render(){

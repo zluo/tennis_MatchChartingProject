@@ -32,18 +32,12 @@ function renderAthlete(player){
  const date=d=>d.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
  $('athleteSummary').textContent=`${fmt(history.length)} charted matches · ${date(history[0].date)} to ${date(history.at(-1).date)} · ${new Set(history.map(h=>h.opponent)).size} opponents · current filters`;
  const metric=$('historyMetric').value,label=$('historyMetric').selectedOptions[0].textContent;
- const time=d=>Date.UTC(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8));
- const start=time(history[0].date),end=time(history.at(-1).date),x=d=>start===end?280:50+(time(d)-start)/(end-start)*455,y=v=>200-v*1.7;
- let plot='<title>'+esc(player+' — '+label+' by match')+'</title>';
- for(const v of [0,25,50,75,100])plot+=`<path d="M50 ${y(v)}H510" stroke="#e7ebe1"/>`+text(42,y(v)+4,v+'%','text-anchor="end"');
- // Null rates leave gaps instead of implying a value or connecting across missing data.
- let segment=[];const segments=[];
- history.forEach(h=>{if(h[metric]===null){if(segment.length)segments.push(segment);segment=[];}else segment.push(`${x(h.date)},${y(h[metric])}`);});if(segment.length)segments.push(segment);
- segments.forEach(points=>plot+=`<polyline points="${points.join(' ')}" fill="none" stroke="#266449" stroke-width="1.6" opacity=".65"/>`);
- history.forEach(h=>{if(h[metric]!==null)plot+=`<circle cx="${x(h.date)}" cy="${y(h[metric])}" r="3.5" fill="#266449"><title>${esc(date(h.date)+' · vs '+h.opponent+' · '+h.tournament+' · '+h.surface+' · '+label+': '+pct(h[metric]))}</title></circle>`;});
- if(start===end)plot+=text(280,225,date(history[0].date),'text-anchor="middle"');
- else for(let i=0;i<3;i++){const stamp=new Date(start+(end-start)*i/2).toISOString().slice(0,10);plot+=text(50+i*227.5,225,stamp,'text-anchor="middle"');}
- $('historyChart').innerHTML=svg(plot,240);
+ const width=Math.max(540,history.length*7+80),step=(width-80)/history.length,matchBarWidth=Math.min(22,step*.8),x=i=>50+(i+.5)*step,y=v=>200-v*1.7;
+ let plot='<title>'+esc(player+' — '+label+' by match, oldest to newest')+'</title>';
+ for(const v of [0,25,50,75,100])plot+=`<path d="M50 ${y(v)}H${width-30}" stroke="#e7ebe1"/>`+text(42,y(v)+4,v+'%','text-anchor="end"');
+ history.forEach((h,i)=>{if(h[metric]!==null)plot+=`<rect x="${x(i)-matchBarWidth/2}" y="${y(h[metric])}" width="${matchBarWidth}" height="${Math.max(1,h[metric]*1.7)}" fill="#266449"><title>${esc(date(h.date)+' · vs '+h.opponent+' · '+h.tournament+' · '+h.surface+' · '+label+': '+pct(h[metric]))}</title></rect>`;});
+ for(const i of new Set([0,Math.floor((history.length-1)/2),history.length-1]))plot+=text(x(i),225,date(history[i].date),'text-anchor="middle"');
+ $('historyChart').innerHTML=`<svg viewBox="0 0 ${width} 240" style="min-width:${width}px" role="img">${plot}</svg>`;
  const counts=new Map();history.forEach(h=>{const year=h.date.slice(0,4);counts.set(year,(counts.get(year)||0)+1);});
  const first=+history[0].date.slice(0,4),last=+history.at(-1).date.slice(0,4),years=Array.from({length:last-first+1},(_,i)=>String(first+i));
  const max=Math.max(...counts.values()),barWidth=460/years.length;

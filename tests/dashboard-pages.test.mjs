@@ -27,15 +27,20 @@ test('overview runs without athlete-page elements and links selected player',asy
  nodes.get('player').value='Roger Federer';nodes.get('player').listeners.change();
  assert.equal(nodes.get('athleteLink').href,'athlete.html?player=Roger%20Federer');
  assert(nodes.get('surfaceChart').innerHTML.includes('<svg'));
+ assert(nodes.get('trendChart').innerHTML.includes('<rect'));
+ assert(!nodes.get('trendChart').innerHTML.includes('<polyline'));
+ assert(!nodes.get('trendChart').innerHTML.includes('<circle'));
 });
 test('separate athlete page supports direct links, filters, and full history',async()=>{
  const nodes=await load('athlete.html','athlete.js','?player=Roger%20Federer');
  assert(!nodes.has('surfaceChart'));assert.equal(nodes.get('tour').value,'m');
- assert(nodes.get('historyChart').innerHTML.includes('<circle'));
+ assert(nodes.get('historyChart').innerHTML.includes('<rect'));
+ assert(!nodes.get('historyChart').innerHTML.includes('<polyline'));
+ assert(!nodes.get('historyChart').innerHTML.includes('<circle'));
  assert(nodes.get('matchRows').innerHTML.includes('Roger Federer'));
  nodes.get('surface').value='Unknown';nodes.get('surface').listeners.change();
  assert(nodes.get('athleteSummary').textContent.startsWith('No charted'));
- nodes.get('fullHistory').onclick();assert(nodes.get('historyChart').innerHTML.includes('<circle'));
+ nodes.get('fullHistory').onclick();assert(nodes.get('historyChart').innerHTML.includes('<rect'));
  nodes.get('reset').onclick();assert.equal(nodes.get('athlete').value,'');
  assert.equal(nodes.get('status').textContent,'Choose an athlete to begin.');
 });
