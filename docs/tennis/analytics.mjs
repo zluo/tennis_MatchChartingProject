@@ -16,6 +16,7 @@ export function athleteHistory(matches, player) {
   const stats = match.stats.find(s => s.player.toLowerCase() === player.toLowerCase());
   if (!stats) return [];
   return [{id:match.id,date:match.date,tournament:match.tournament,surface:match.surface,
+   result:match.winner===player || (match.winner && match.winner.toLowerCase()===player.toLowerCase()) ? 'win' : match.winner && match.players.includes(match.winner) ? 'loss' : 'unknown',
    opponent:match.players.find(p=>p.toLowerCase()!==player.toLowerCase()) || '',
    ...summarize([{stats:[stats]}],player)}];
  }).sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));

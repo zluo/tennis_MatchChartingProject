@@ -67,6 +67,49 @@ class GeneratorTests(unittest.TestCase):
         self.assertIsNone(profiles[1]['rank'])
         self.assertEqual(profiles[1]['rankingDate'], '2026-11-16')
 
+    def test_completed_outcomes_use_server_first_scores(self):
+        point = dict(PtWinner='2', Svr='1', Set1='1', Set2='1', Gm1='3', Gm2='5', Pts='30-40')
+        self.assertEqual(generator.completed_match_winner(point, '3', '1'), 1)
+        point.update(Svr='2', Pts='40-30')
+        self.assertEqual(generator.completed_match_winner(point, '3', '1'), 1)
+        point.update(Pts='30-30')
+        self.assertIsNone(generator.completed_match_winner(point, '3', '1'))
+        point.update(Pts='40-30', Set1='0', Set2='0')
+        self.assertIsNone(generator.completed_match_winner(point, '3', '1'))
+
+    def test_tiebreak_and_special_formats(self):
+        point = dict(PtWinner='1', Svr='2', Set1='1', Set2='1', Gm1='6', Gm2='6', Pts='5-6')
+        self.assertEqual(generator.completed_match_winner(point, '3', '1'), 0)
+        self.assertIsNone(generator.completed_match_winner(point, '3', 'A'))
+        point['Pts'] = '8-9'
+        self.assertEqual(generator.completed_match_winner(point, '3', 'A'), 0)
+        point.update(Gm1='0', Gm2='0')
+        self.assertEqual(generator.completed_match_winner(point, '3', 'S'), 0)
+        point.update(Gm1='3', Gm2='2', Pts='40-40')
+        self.assertEqual(generator.completed_match_winner(point, '3', 'N'), 0)
+        point.update(Set1='2', Set2='1', Gm1='5', Gm2='4', Pts='30-40')
+        self.assertEqual(generator.completed_match_winner(point, '5', '1'), 0)
+        self.assertIsNone(generator.completed_match_winner(point, '5', 'unsupported'))
+
+    def test_final_point_files_join_outcomes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.fixture(root)
+            metadata = root / 'charting-w-matches.csv'
+            with metadata.open(newline='') as stream:
+                rows = list(csv.DictReader(stream))
+            rows[0].update({'Best of':'3', 'Final TB?':'1'})
+            with metadata.open('w', newline='') as stream:
+                writer = csv.DictWriter(stream,fieldnames=list(rows[0]))
+                writer.writeheader();writer.writerows(rows)
+            point = dict(match_id='w', Pt='99', PtWinner='1', Svr='1', Set1='1', Set2='0', Gm1='5', Gm2='4', Pts='40-30')
+            with (root/'charting-w-points-2020s.csv').open('w', newline='') as stream:
+                writer = csv.DictWriter(stream,fieldnames=list(point))
+                writer.writeheader();writer.writerow(point)
+            matches, _ = generator.build_dataset(root)
+            self.assertEqual(matches[0]['winner'], 'A & B')
+            self.assertIsNone(matches[1]['winner'])
+
     def test_bad_numeric_count_preserves_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

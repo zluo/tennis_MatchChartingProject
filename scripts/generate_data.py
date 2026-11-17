@@ -43,18 +43,88 @@ def count(value, path, match_id, column):
         raise ValueError(f'{path}: {match_id}: invalid {column} count {value!r}') from None
 
 
+def completed_match_winner(point, best_of, format_code):
+    """Confirm a completed match from its final pre-point score (server-first Pts).
+
+    MatchChart workbook B14 codes: A=10-point deciding TB, T=12-all TB,
+    S=deciding match TB, N=NextGen, W=8-all TB, V=all advantage sets.
+    Incomplete, retired, unsupported, or malformed records remain unknown.
+    """
+    try:
+        best_of = int(best_of)
+        if best_of not in (1, 3, 5):
+            return None
+        target = best_of // 2 + 1
+        winner = int(point['PtWinner']) - 1
+        server = int(point['Svr']) - 1
+        if winner not in (0, 1) or server not in (0, 1):
+            return None
+        sets = [int(point['Set1']), int(point['Set2'])]
+        games = [int(point['Gm1']), int(point['Gm2'])]
+        if any(v < 0 for v in sets + games) or sets[winner] != target - 1 or sets[1-winner] >= target:
+            return None
+        deciding = sets == [target-1, target-1]
+        code = str(format_code or '').strip()
+        if code not in ('1', '0', 'A', 'T', 'S', 'N', 'W', 'V'):
+            return None
+        scores = point['Pts'].upper().split('-')
+        if len(scores) != 2:
+            return None
+        own, other = (scores if winner == server else scores[::-1])
+        tb_at = 3 if code == 'N' else 8 if code == 'W' else 12 if deciding and code == 'T' else 6
+        tb_enabled = code != 'V' and not (deciding and code == '0')
+        match_tb = deciding and code == 'S'
+        if (match_tb and games == [0, 0]) or (tb_enabled and games == [tb_at, tb_at]):
+            before, against = int(own), int(other)
+            needed = 10 if match_tb or (deciding and code == 'A') else 7
+            # Reject rows whose score was already terminal before this point.
+            if before >= needed and before - against >= 2:
+                return None
+            return winner if before + 1 >= needed and before + 1 - against >= 2 else None
+        game_won = (own == '40' and other in ('0', '15', '30')) or (own in ('AD', 'A') and other == '40')
+        if code == 'N' and own == other == '40':
+            game_won = True
+        games_needed = 4 if code == 'N' else 6
+        return winner if game_won and games[winner] + 1 >= games_needed and games[winner] + 1 - games[1-winner] >= 2 else None
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def attach_outcomes(source, gender, matches, rules):
+    final_points = {}
+    required = ['match_id','Pt','Set1','Set2','Gm1','Gm2','Pts','Svr','PtWinner']
+    for path in sorted(source.glob(f'charting-{gender}-points-*.csv')):
+        for row in read_rows(path, required):
+            match_id = row['match_id']
+            if match_id not in matches:
+                continue
+            try:
+                number = int(row['Pt'])
+            except ValueError:
+                continue
+            previous = final_points.get(match_id)
+            if previous is None or number > previous[0]:
+                final_points[match_id] = (number, row)
+    for match_id, match in matches.items():
+        last = final_points.get(match_id)
+        winner = completed_match_winner(last[1], *rules[match_id]) if last else None
+        match['winner'] = match['players'][winner] if winner is not None else None
+
+
 def build_dataset(source):
     result = []
     skipped = 0
     for gender in ('w', 'm'):
         metadata = source / f'charting-{gender}-matches.csv'
         matches = {}
+        rules = {}
         for row in read_rows(metadata, ['match_id', 'Date', 'Tournament', 'Surface', 'Round', 'Player 1', 'Player 2']):
             match_id = row['match_id']
             if not match_id:
                 raise ValueError(f'{metadata}: empty match_id')
             if match_id in matches:
                 print(f'Warning: {metadata.name}: duplicate {match_id}; using the last metadata row', file=sys.stderr)
+            rules[match_id] = (row.get('Best of'), row.get('Final TB?'))
             matches[match_id] = dict(
                 id=match_id, gender=gender, date=row['Date'], tournament=row['Tournament'],
                 surface=row['Surface'], round=row['Round'],
@@ -71,6 +141,7 @@ def build_dataset(source):
             if row['row'] in RALLY_BUCKETS and row['match_id'] in matches:
                 matches[row['match_id']]['rally'].append([
                     row['row'], count(row['pts'], rally, row['match_id'], 'pts')])
+        attach_outcomes(source, gender, matches, rules)
         for match in matches.values():
             stats = match['stats']
             if len(stats) != 2 or sorted(s['player'] for s in stats) != sorted(match['players']):
@@ -173,6 +244,7 @@ def main(argv=None):
         write_outputs(matches, list(dict.fromkeys(path.resolve() for path in outputs)), ranking_rows)
     except (OSError, ValueError, csv.Error) as error:
         parser.exit(1, f'Error: {error}\n')
+    print(f'Confirmed outcomes: {sum(m.get("winner") is not None for m in matches):,}; unknown outcomes: {sum(m.get("winner") is None for m in matches):,}.')
     print(f'Skipped {skipped:,} matches without exactly one overview Total row per player.')
 
 

@@ -1,4 +1,4 @@
-import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=athlete-history-2';
+import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=yearly-results-1';
 const $=id=>document.getElementById(id),fmt=n=>Number(n).toLocaleString(),pct=n=>n===null?'—':n.toFixed(1)+'%',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let data=[],filtered=[],directory=[],page=0;
 const svg=(body,height=230)=>`<svg viewBox="0 0 540 ${height}" role="img">${body}</svg>`;
@@ -30,7 +30,9 @@ function renderAthlete(player){
   $('historyChart').innerHTML='<p>'+esc(message)+'</p>';$('activityChart').innerHTML='<p>'+esc(message)+'</p>';return;
  }
  const date=d=>d.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3');
- $('athleteSummary').textContent=`${fmt(history.length)} charted matches · ${date(history[0].date)} to ${date(history.at(-1).date)} · ${new Set(history.map(h=>h.opponent)).size} opponents · current filters`;
+ const wins=history.filter(h=>h.result==='win').length,losses=history.filter(h=>h.result==='loss').length,unknown=history.length-wins-losses;
+ $('athleteSummary').textContent=`${fmt(history.length)} charted matches · ${wins} wins / ${losses} losses / ${unknown} unknown · ${date(history[0].date)} to ${date(history.at(-1).date)} · ${new Set(history.map(h=>h.opponent)).size} opponents · current filters`;
+
  const metric=$('historyMetric').value,label=$('historyMetric').selectedOptions[0].textContent;
  const width=Math.max(540,history.length*7+80),step=(width-80)/history.length,matchBarWidth=Math.min(22,step*.8),x=i=>50+(i+.5)*step,y=v=>200-v*1.7;
  let plot='<title>'+esc(player+' — '+label+' by match, oldest to newest')+'</title>';
@@ -38,13 +40,17 @@ function renderAthlete(player){
  history.forEach((h,i)=>{if(h[metric]!==null)plot+=`<rect x="${x(i)-matchBarWidth/2}" y="${y(h[metric])}" width="${matchBarWidth}" height="${Math.max(1,h[metric]*1.7)}" fill="#266449"><title>${esc(date(h.date)+' · vs '+h.opponent+' · '+h.tournament+' · '+h.surface+' · '+label+': '+pct(h[metric]))}</title></rect>`;});
  for(const i of new Set([0,Math.floor((history.length-1)/2),history.length-1]))plot+=text(x(i),225,date(history[i].date),'text-anchor="middle"');
  $('historyChart').innerHTML=`<svg viewBox="0 0 ${width} 240" style="min-width:${width}px" role="img">${plot}</svg>`;
- const counts=new Map();history.forEach(h=>{const year=h.date.slice(0,4);counts.set(year,(counts.get(year)||0)+1);});
+ const counts=new Map();history.forEach(h=>{const year=h.date.slice(0,4);if(!counts.has(year))counts.set(year,{win:0,loss:0,unknown:0,total:0});const record=counts.get(year);record[h.result]++;record.total++;});
  const first=+history[0].date.slice(0,4),last=+history.at(-1).date.slice(0,4),years=Array.from({length:last-first+1},(_,i)=>String(first+i));
- const max=Math.max(...counts.values()),barWidth=460/years.length;
- let activity='<title>'+esc(player+' — charted matches per year')+'</title>';
+ const max=Math.max(...[...counts.values()].map(r=>r.total)),barWidth=460/years.length;
+ let activity='<title>'+esc(player+' — charted wins, losses, and unknown outcomes by year')+'</title>';
  for(const v of [...new Set([0,Math.ceil(max/2),max])]){const yy=200-v/max*170;activity+=`<path d="M40 ${yy}H510" stroke="#e7ebe1"/>`+text(32,yy+4,v,'text-anchor="end"');}
- years.forEach((year,i)=>{const n=counts.get(year)||0;activity+=`<rect x="${45+i*barWidth}" y="${200-n/max*170}" width="${Math.max(1,barWidth-3)}" height="${n/max*170}" rx="2" fill="#83b6ab"><title>${year}: ${n} charted matches</title></rect>`;if(i===0||i===years.length-1||i%Math.ceil(years.length/5)===0)activity+=text(45+(i+.5)*barWidth,225,year,'text-anchor="middle"');});
+ const colors={win:'#266449',loss:'#b36c52',unknown:'#a6afa5'};
+ years.forEach((year,i)=>{const record=counts.get(year)||{win:0,loss:0,unknown:0,total:0};let base=200;
+ for(const result of ['win','loss','unknown']){const n=record[result],height=n/max*170;base-=height;if(n)activity+=`<rect data-result="${result}" x="${45+i*barWidth}" y="${base}" width="${Math.max(1,barWidth-3)}" height="${height}" rx="1" fill="${colors[result]}"><title>${year}: ${record.win} wins, ${record.loss} losses, ${record.unknown} unknown (${record.total} charted matches)</title></rect>`;}
+ if(i===0||i===years.length-1||i%Math.ceil(years.length/5)===0)activity+=text(45+(i+.5)*barWidth,225,year,'text-anchor="middle"');});
  $('activityChart').innerHTML=svg(activity,240);
+
 }
 function render(){
  const player=$('player').value.trim(),from=+$('from').value,to=+$('to').value;

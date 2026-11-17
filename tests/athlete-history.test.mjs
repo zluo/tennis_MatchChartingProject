@@ -43,7 +43,15 @@ test('dropdown contains every athlete before JavaScript loads',()=>{
  const names=new Set(data.flatMap(m=>m.players));
  assert.equal((select.match(/<option /g)||[]).length,names.size+1);
  assert(select.includes('Roger Federer'));assert(select.includes('Serena Williams'));
- assert(html.includes('src="athlete.js?v=bar-charts-1"'));
+ assert(html.includes('src="athlete.js?v=yearly-results-1"'));
  const app=readFileSync(new URL('../docs/tennis/app.js',import.meta.url),'utf8');
- assert(app.includes("analytics.mjs?v=athlete-history-2"));
+ assert(app.includes("analytics.mjs?v=yearly-results-1"));
+});
+
+test('athlete outcomes are relative to the selected player and preserve unknowns',()=>{
+ const a=match('a','20250101','A','B',10,8,0);a.winner='A';
+ const b=match('b','20250102','A','B',10,9,0);b.winner='B';
+ const c=match('c','20250103','A','B',10,10,0);c.winner=null;
+ assert.deepEqual(athleteHistory([a,b,c],'A').map(h=>h.result),['win','loss','unknown']);
+ assert.deepEqual(athleteHistory([a,b,c],'B').map(h=>h.result),['loss','win','unknown']);
 });

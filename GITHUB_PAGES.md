@@ -79,3 +79,11 @@ python3 scripts/update_rankings.py
 The downloader validates dates and page coverage before replacing the saved ranking CSV. `python3 scripts/generate_data.py` remains usable offline and joins the saved snapshot to produce `profiles.json` beside each `data.json`. If no ranking CSV exists, profiles still include tour and charted period, with unavailable ranks. The website also falls back to charted periods if `profiles.json` cannot load.
 
 After a ranking refresh, commit `data/athlete_rankings.csv`, `docs/tennis/profiles.json`, and `docs/tennis/athlete.html`, along with any changed match data. Rankings are snapshots and do not refresh automatically for visitors.
+
+## Wins and losses by year
+
+The athlete page stacks **Wins**, **Losses**, and **Unknown** outcomes in the yearly match chart. Hover over a year for all counts; the selection summary also shows the overall win/loss/unknown record. Counts follow the selected athlete, tour, surface, and date filters.
+
+`generate_data.py` now streams all available `charting-{m,w}-points-*.csv` files and stores each match's `winner` (player name or `null`). A result is confirmed only when the final recorded point completes the required number of sets using its pre-point score, server, point winner, best-of metadata, and workbook match-format code. Scores in `Pts` are server-first. Standard, advantage, 8-all/12-all tiebreaks, deciding 10-point tiebreaks, match tiebreaks, and NextGen formats are supported.
+
+Incomplete, retired, malformed, unsupported, and missing-point records stay **Unknown**; the final point winner alone is not treated as the match winner. Point files are optional for custom inputs, but omitting them leaves outcomes unknown. Refresh generated match data with `python3 scripts/generate_data.py` after updating point CSVs. These counts cover charted matches, not the athlete's full professional record.

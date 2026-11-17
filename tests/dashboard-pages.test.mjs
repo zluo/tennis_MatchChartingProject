@@ -38,6 +38,9 @@ test('separate athlete page supports direct links, filters, and full history',as
  assert(!nodes.get('historyChart').innerHTML.includes('<polyline'));
  assert(!nodes.get('historyChart').innerHTML.includes('<circle'));
  assert(nodes.get('matchRows').innerHTML.includes('Roger Federer'));
+ assert(nodes.get('activityChart').innerHTML.includes('data-result="win"'));
+ assert(nodes.get('activityChart').innerHTML.includes('data-result="loss"'));
+ assert(nodes.get('activityChart').innerHTML.includes('wins,'));
  nodes.get('surface').value='Unknown';nodes.get('surface').listeners.change();
  assert(nodes.get('athleteSummary').textContent.startsWith('No charted'));
  nodes.get('fullHistory').onclick();assert(nodes.get('historyChart').innerHTML.includes('<rect'));

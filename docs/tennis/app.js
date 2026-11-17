@@ -1,4 +1,4 @@
-import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=athlete-history-2';
+import {sum,rate,summarize,select,athleteHistory} from './analytics.mjs?v=yearly-results-1';
 const $=id=>document.getElementById(id),fmt=n=>Number(n).toLocaleString(),pct=n=>n===null?'—':n.toFixed(1)+'%',esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let data=[],filtered=[],page=0;
 const svg=(body,height=230)=>`<svg viewBox="0 0 540 ${height}" role="img">${body}</svg>`;
