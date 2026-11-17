@@ -37,7 +37,7 @@ Tennis data attribution and CC BY-NC-SA 4.0 license links appear in the dashboar
 
 ## Athlete history reports
 
-In Baseline, open **Athlete reporting** (`tennis/athlete.html`), then choose an athlete from the **Athlete** dropdown or the player search. The athlete report shows annual point-weighted serve, return, first-serve, ace, or break-point rates and charted matches per year. Performance uses one bar per year and fits the available page width. Rates divide summed numerators by summed denominators within each year. Hover over bars for the year, rate, and match count; individual matches remain available in the notebook. **Show full history** clears surface and year filters for that athlete. Historical records include only charted matches in this dataset.
+In Baseline, open **Athlete reporting** (`tennis/athlete.html`), then choose an athlete from the **Athlete** dropdown or the player search. The athlete report shows match-by-match serve, return, first-serve, ace, or break-point rates and charted matches per year. Performance keeps one bar per match in chronological order within a fixed, responsive chart width. Bars narrow as match counts increase; no aggregation or horizontal scrolling is used. Hover for date, opponent, tournament, surface, and rate. **Show full history** clears surface and year filters for that athlete. Historical records include only charted matches in this dataset.
 
 Validate athlete calculations with `node --test tests/athlete-history.test.mjs`.
 

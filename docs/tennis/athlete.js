@@ -34,13 +34,11 @@ function renderAthlete(player){
  $('athleteSummary').textContent=`${fmt(history.length)} charted matches · ${wins} wins / ${losses} losses / ${unknown} unknown · ${date(history[0].date)} to ${date(history.at(-1).date)} · ${new Set(history.map(h=>h.opponent)).size} opponents · current filters`;
 
  const metric=$('historyMetric').value,label=$('historyMetric').selectedOptions[0].textContent;
- const firstYear=+history[0].date.slice(0,4),lastYear=+history.at(-1).date.slice(0,4);
- const periods=Array.from({length:lastYear-firstYear+1},(_,i)=>{const year=String(firstYear+i),matches=filtered.filter(m=>m.date.startsWith(year));return {year,count:matches.length,...summarize(matches,player)};});
- const step=460/periods.length,matchBarWidth=Math.min(28,step*.8),x=i=>50+(i+.5)*step,y=v=>200-v*1.7;
- let plot='<title>'+esc(player+' — annual point-weighted '+label)+'</title>';
+ const step=460/history.length,matchBarWidth=Math.min(22,step*.85),x=i=>50+(i+.5)*step,y=v=>200-v*1.7;
+ let plot='<title>'+esc(player+' — '+label+' by match, oldest to newest')+'</title>';
  for(const v of [0,25,50,75,100])plot+=`<path d="M50 ${y(v)}H510" stroke="#e7ebe1"/>`+text(42,y(v)+4,v+'%','text-anchor="end"');
- periods.forEach((period,i)=>{if(period[metric]!==null)plot+=`<rect data-year="${period.year}" x="${x(i)-matchBarWidth/2}" y="${y(period[metric])}" width="${matchBarWidth}" height="${Math.max(1,period[metric]*1.7)}" fill="#266449"><title>${esc(period.year+' · '+label+': '+pct(period[metric])+' · '+period.count+' charted matches · point-weighted')}</title></rect>`;});
- periods.forEach((period,i)=>{if(i===0||i===periods.length-1||i%Math.ceil(periods.length/6)===0)plot+=text(x(i),225,period.year,'text-anchor="middle"');});
+ history.forEach((match,i)=>{if(match[metric]!==null)plot+=`<rect data-match="${esc(match.id)}" x="${x(i)-matchBarWidth/2}" y="${y(match[metric])}" width="${matchBarWidth}" height="${Math.max(1,match[metric]*1.7)}" fill="#266449"><title>${esc(date(match.date)+' · vs '+match.opponent+' · '+match.tournament+' · '+match.surface+' · '+label+': '+pct(match[metric]))}</title></rect>`;});
+ for(const i of new Set([0,Math.floor((history.length-1)/2),history.length-1]))plot+=text(x(i),225,date(history[i].date),'text-anchor="middle"');
  $('historyChart').innerHTML=svg(plot,240);
  const counts=new Map();history.forEach(h=>{const year=h.date.slice(0,4);if(!counts.has(year))counts.set(year,{win:0,loss:0,unknown:0,total:0});const record=counts.get(year);record[h.result]++;record.total++;});
  const first=+history[0].date.slice(0,4),last=+history.at(-1).date.slice(0,4),years=Array.from({length:last-first+1},(_,i)=>String(first+i));
